@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@layer base {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased min-h-screen font-sans;
+  }
+
+  /* Responsive touch scrolling for horizontal overflow containers */
+  .overflow-x-auto,
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent awkward string clipping on small viewports */
+  .break-words-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
