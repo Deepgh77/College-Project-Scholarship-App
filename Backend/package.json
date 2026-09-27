@@ -8,8 +8,14 @@
     "dev": "node --watch src/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "node prisma/seed.js",
     "prisma:studio": "prisma studio",
+    "seed": "node prisma/seed.js",
+    "provision:staff": "node prisma/provision-staff.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   },
   "keywords": [],
   "author": "",

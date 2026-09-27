@@ -27,6 +27,65 @@ const DEPARTMENTS = [
   },
 ];
 
+const COLLEGES = [
+  {
+    code: 'ENG-PUN-001',
+    name: 'Government College of Engineering, Pune (COEP)',
+    university: 'Savitribai Phule Pune University',
+    district: 'Pune',
+    taluka: 'Haveli',
+    isActive: true,
+  },
+  {
+    code: 'ASC-PUN-002',
+    name: 'Fergusson College (Autonomous), Pune',
+    university: 'Savitribai Phule Pune University',
+    district: 'Pune',
+    taluka: 'Haveli',
+    isActive: true,
+  },
+  {
+    code: 'COM-MUM-003',
+    name: 'Sydenham College of Commerce & Economics, Mumbai',
+    university: 'University of Mumbai',
+    district: 'Mumbai City',
+    taluka: 'Mumbai',
+    isActive: true,
+  },
+  {
+    code: 'BCA-KLN-004',
+    name: 'B.K. Birla College of Arts, Science & Commerce, Kalyan',
+    university: 'University of Mumbai',
+    district: 'Thane',
+    taluka: 'Kalyan',
+    isActive: true,
+  },
+  {
+    code: 'MOD-PUN-005',
+    name: 'Modern College of Arts, Science & Commerce, Shivajinagar, Pune',
+    university: 'Savitribai Phule Pune University',
+    district: 'Pune',
+    taluka: 'Haveli',
+    isActive: true,
+  },
+  {
+    code: 'IMR-JAL-001',
+    name: "KCES's Institute of Management & Research, Jalgaon",
+    university: 'Autonomous',
+    district: 'Jalgaon',
+    taluka: 'Jalgaon',
+    isActive: true,
+  },
+  {
+    code: 'BCA-JAL-021',
+    name: 'M.J College, Jalgaon',
+    university: 'Autonomous',
+    district: 'Jalgaon',
+    taluka: 'Jalgaon',
+    isActive: true,
+  },
+];
+
 const SCHOLARSHIPS = [
   {
     code: 'SJD-SC-001',
@@ -380,10 +439,34 @@ const SCHOLARSHIPS = [
 ];
 
 async function seed() {
-  console.log('=== STARTING PHASE 3 SCHOLARSHIP MASTER SEEDING ===\n');
+  console.log('=== STARTING MAHARASHTRA SCHOLARSHIP MASTER SEEDING ===\n');
 
-  // 1. Seed Departments
-  console.log('1. Seeding Departments...');
+  // 1. Seed Colleges
+  console.log('1. Seeding Colleges...');
+  for (const c of COLLEGES) {
+    const college = await prisma.college.upsert({
+      where: { code: c.code },
+      update: {
+        name: c.name,
+        university: c.university,
+        district: c.district,
+        taluka: c.taluka,
+        isActive: c.isActive,
+      },
+      create: {
+        code: c.code,
+        name: c.name,
+        university: c.university,
+        district: c.district,
+        taluka: c.taluka,
+        isActive: c.isActive,
+      },
+    });
+    console.log(`   [COLLEGE] ${college.code} — ${college.name} (${college.district})`);
+  }
+
+  // 2. Seed Departments
+  console.log('\n2. Seeding Departments...');
   const deptMap = {};
   for (const d of DEPARTMENTS) {
     const dept = await prisma.department.upsert({
@@ -499,8 +582,8 @@ async function seed() {
     console.log(`   [SCHOLARSHIP] ${scholarship.code} — ${scholarship.name} (${s.rules.length} rules, ${s.requiredDocs.length} docs)`);
   }
 
-  // 3. Provision Stable College Officer User for Manual QA
-  console.log('\n3. Provisioning Stable College Officer for COEP (ENG-PUN-001)...');
+  // 4. Provision Stable College Officer User (COEP)
+  console.log('\n4. Provisioning Initial College Officer (COEP - ENG-PUN-001)...');
   const coepCollege = await prisma.college.findUnique({
     where: { code: 'ENG-PUN-001' },
   });
@@ -508,11 +591,13 @@ async function seed() {
   if (!coepCollege) {
     console.warn('   [WARN] College ENG-PUN-001 not found; skipping College Officer provisioning.');
   } else {
+    const collegeEmail = process.env.INITIAL_COLLEGE_EMAIL || 'officer.coep@college.ac.in';
+    const collegePassword = process.env.INITIAL_COLLEGE_PASSWORD || 'College@123';
     const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash('Password@123', salt);
+    const passwordHash = await bcrypt.hash(collegePassword, salt);
 
     const officer = await prisma.user.upsert({
-      where: { email: 'officer.coep@college.ac.in' },
+      where: { email: collegeEmail.toLowerCase() },
       update: {
         role: 'COLLEGE',
         collegeId: coepCollege.id,
@@ -520,7 +605,7 @@ async function seed() {
         passwordHash,
       },
       create: {
-        email: 'officer.coep@college.ac.in',
+        email: collegeEmail.toLowerCase(),
         passwordHash,
         role: 'COLLEGE',
         collegeId: coepCollege.id,
@@ -531,47 +616,91 @@ async function seed() {
     console.log(`   [USER] Provisioned College Officer: ${officer.email} linked to ${coepCollege.name} (${coepCollege.code})`);
   }
 
-  // 4. Provision Stable Development Admin User (Academic/Demo)
-  console.log('\n4. Provisioning Stable Development Admin User (Academic/Local)...');
-  const adminEmail = 'admin@scholarship.local';
-  const existingAdmin = await prisma.user.findUnique({
-    where: { email: adminEmail },
-  });
-
-  const salt = await bcrypt.genSalt(10);
-  const adminHash = await bcrypt.hash('Admin@123', salt);
-
-  if (existingAdmin) {
-    const updated = await prisma.user.update({
-      where: { email: adminEmail },
-      data: {
-        role: 'ADMIN',
-        isActive: true,
-      },
-    });
-    console.log(`   [USER] Verified Development Admin: ${updated.email} (Role: ${updated.role}, Active: ${updated.isActive})`);
+  // 5. Provision Stable Authority Officer (OBCW Department)
+  console.log('\n5. Provisioning Initial Authority Officer (OBCW Department)...');
+  const obcwDeptId = deptMap['OBCW'];
+  if (!obcwDeptId) {
+    console.warn('   [WARN] Department OBCW not found; skipping Authority Officer provisioning.');
   } else {
-    const created = await prisma.user.create({
-      data: {
-        email: adminEmail,
-        passwordHash: adminHash,
-        role: 'ADMIN',
+    const authEmail = process.env.INITIAL_AUTHORITY_EMAIL || 'officer.obcw@authority.gov.in';
+    const authPassword = process.env.INITIAL_AUTHORITY_PASSWORD || 'Authority@123';
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(authPassword, salt);
+
+    const authOfficer = await prisma.user.upsert({
+      where: { email: authEmail.toLowerCase() },
+      update: {
+        role: 'AUTHORITY',
+        departmentId: obcwDeptId,
+        isActive: true,
+        passwordHash,
+      },
+      create: {
+        email: authEmail.toLowerCase(),
+        passwordHash,
+        role: 'AUTHORITY',
+        departmentId: obcwDeptId,
         isActive: true,
       },
     });
-    console.log(`   [USER] Created Development Admin: ${created.email} (Role: ${created.role}, Active: ${created.isActive})`);
+
+    console.log(`   [USER] Provisioned Authority Officer: ${authOfficer.email} linked to OBCW Department`);
   }
 
+  // 6. Provision Stable Admin User
+  console.log('\n6. Provisioning Initial System Admin User...');
+  const adminEmail = process.env.INITIAL_ADMIN_EMAIL || 'admin@maharashtra.gov.in';
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'Admin@123';
+  const adminSalt = await bcrypt.genSalt(10);
+  const adminHash = await bcrypt.hash(adminPassword, adminSalt);
+
+  const admin = await prisma.user.upsert({
+    where: { email: adminEmail.toLowerCase() },
+    update: {
+      role: 'ADMIN',
+      isActive: true,
+      passwordHash: adminHash,
+    },
+    create: {
+      email: adminEmail.toLowerCase(),
+      passwordHash: adminHash,
+      role: 'ADMIN',
+      isActive: true,
+    },
+  });
+  console.log(`   [USER] Provisioned System Admin: ${admin.email}`);
+
+  // Academic Local Dev Admin for local test convenience
+  const devAdminHash = await bcrypt.hash('Admin@123', adminSalt);
+  await prisma.user.upsert({
+    where: { email: 'admin@scholarship.local' },
+    update: {
+      role: 'ADMIN',
+      isActive: true,
+      passwordHash: devAdminHash,
+    },
+    create: {
+      email: 'admin@scholarship.local',
+      passwordHash: devAdminHash,
+      role: 'ADMIN',
+      isActive: true,
+    },
+  });
+
+  const finalColleges = await prisma.college.count();
   const finalDepts = await prisma.department.count();
   const finalSchols = await prisma.scholarship.count();
   const finalRules = await prisma.scholarshipRule.count();
   const finalDocs = await prisma.scholarshipRequiredDoc.count();
+  const finalUsers = await prisma.user.count();
 
   console.log('\n=== SEEDING COMPLETED SUCCESSFULLY ===');
+  console.log(`Total Colleges: ${finalColleges}`);
   console.log(`Total Departments: ${finalDepts}`);
   console.log(`Total Scholarships: ${finalSchols}`);
   console.log(`Total Rules: ${finalRules}`);
   console.log(`Total Required Documents: ${finalDocs}`);
+  console.log(`Total Users in System: ${finalUsers}`);
 }
 
 seed()
@@ -580,3 +709,4 @@ seed()
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());
+

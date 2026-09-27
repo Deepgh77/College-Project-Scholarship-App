@@ -9,6 +9,7 @@
     "start:backend": "npm --prefix Backend start",
     "dev:frontend": "npm --prefix Frontend run dev",
     "build:frontend": "npm --prefix Frontend run build",
-    "prisma:studio": "npm --prefix Backend run prisma:studio"
+    "prisma:studio": "npm --prefix Backend run prisma:studio",
+    "seed:backend": "npm --prefix Backend run seed"
   }
 }
